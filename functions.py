@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 def get_local_matrix(h_x, h_y, k):
     K11 = (k/(3*h_x*h_y))*(h_y**2 + h_x**2)
@@ -19,7 +20,11 @@ def get_local_matrix(h_x, h_y, k):
     K44 = (k/(3*h_x*h_y))*(h_y**2 + h_x**2)
     return np.array([[K11, K12, K13, K14], [K21, K22, K23, K24], [K31, K32, K33, K34], [K41, K42, K43, K44]])
 
-def get_global_matrix(n, m, h_x, h_y, k):
+
+def get_global_matrix(n, m, h_x, h_y, x, k1, k2):
+    if k2 == None:
+        k2 = k1
+
     num_nodes_x = n + 1
     num_nodes_y = m + 1
     total_nodes = num_nodes_x * num_nodes_y
@@ -27,9 +32,14 @@ def get_global_matrix(n, m, h_x, h_y, k):
 
     def get_global_node(row, col):
         return row * num_nodes_x + col
-
+    
     for elements_x in range(n):
         for elements_y in range(m):
+            element_x_center = (elements_x + 0.5) * h_x
+            if element_x_center < x:
+                k = k1
+            else:
+                k = k2
             local_matrix = get_local_matrix(h_x, h_y, k)
 
             n1 = get_global_node(elements_y, elements_x)
@@ -68,31 +78,91 @@ def dirichlet(global_matrix, n,m,t0,tf):
 def solve_for_temperatures(global_matrix, load_vector):
     return np.linalg.solve(global_matrix, load_vector)
 
-def map_to_mesh(temperatures, n, m):
-    num_nodes_x = n + 1
-    num_nodes_y = m + 1
-    T = np.zeros((num_nodes_y, num_nodes_x))
-    for i in range(num_nodes_y):
-        for j in range(num_nodes_x):
-            T[i, j] = temperatures[i * num_nodes_x + j]
-    return T
+def get_node_coords(n, m, len_x, len_y):
+    x_coords, y_coords = np.meshgrid(np.linspace(0, len_x, n + 1), np.linspace(0, len_y, m + 1))
+    return x_coords, y_coords
 
+def plot_nodes(x_coords, y_coords, len_x, len_y):
+    fig = plt.figure()
+    ax = fig.add_subplot()
+    ax.hlines(y_coords, 0, len_x, color='black', linestyle='-', lw=0.6)
+    ax.vlines(x_coords, 0, len_y, color='black', linestyle='-', lw=0.6)
+    plt.plot(x_coords, y_coords, '.', color='black')
+    
+    count = 1
+    for i,j in zip(x_coords, y_coords):
+        for x,y in zip(i, j):
+            ax.text(x, y, f'{count}', color='black', fontsize=10)
+            # ax.text(x, y, f'({x:.2f}, {y:.2f}), {count}', color='black', fontsize=8)
+            count += 1
+
+    # to poniżej prostu nie działa z jakiegos powodu
+    # for count, (x, y) in enumerate(zip(x_coords, y_coords), start=1):
+    #     ax.text(x, y, f'{count}', color='black', fontsize=8)
+
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.title('nodes')
+    plt.show()
+
+def plot_temp_at_node(temperatures, x_coords, y_coords, len_x, len_y):
+    fig = plt.figure()
+    ax = fig.add_subplot()
+    ax.hlines(y_coords, 0, len_x, color='black', linestyle='-', lw=0.6)
+    ax.vlines(x_coords, 0, len_y, color='black', linestyle='-', lw=0.6)
+    plt.plot(x_coords, y_coords, '.', color='black')
+    
+    
+    for i, temp in enumerate(temperatures, start=1):
+        x = x_coords.flatten()[i-1]
+        y = y_coords.flatten()[i-1]
+        ax.text(x, y, f'{temp:.2f}', color='black', fontsize=8)
+
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.title('temperatures at nodes')
+    plt.show()
+
+def plot_temp_color_map(temperatures, x_coords, y_coords, len_x, len_y):
+    fig = plt.figure()
+    ax = fig.add_subplot()
+    ax.hlines(y_coords, 0, len_x, color='black', linestyle='-', lw=0.3)
+    ax.vlines(x_coords, 0, len_y, color='black', linestyle='-', lw=0.3)
+    plt.plot(x_coords, y_coords, '.', color='black')
+    
+    plt.pcolormesh(x_coords, y_coords, temperatures.reshape(x_coords.shape))
+    plt.colorbar()
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.title('temperatures at nodes')
+    plt.show()
+    
 # dane z wykładów
-n = 2  
-m = 2  
-h_x = 0.5  
-h_y = 0.5  
-k = 1.0  
+n = 20  
+m = 20
+len_x = 1.0
+len_y = 1.0  
+h_x = len_x / n  
+h_y = len_y / m  
+t0 = 100.0
+tf = 270.0 
+# x is where the material changes
+x = 0.5
+k1 = 0.1
+k2 = 50
 
-global_matrix = get_global_matrix(n, m, h_x, h_y, k)
+global_matrix = get_global_matrix(n, m, h_x, h_y, x, k1, k2)
 print(global_matrix)
 
-load_vector, global_matrix_updated = dirichlet(global_matrix, n,m,0,1)
+load_vector, global_matrix_updated = dirichlet(global_matrix, n,m,t0,tf)
 print(load_vector)
 print(global_matrix_updated)
 
 temperatures = solve_for_temperatures(global_matrix_updated, load_vector)
 print(temperatures)
 
-final_map = map_to_mesh(temperatures, n, m)
-print(final_map)
+x_coords, y_coords = get_node_coords(n, m, len_x, len_y)
+plot_nodes(x_coords, y_coords, len_x, len_y)
+
+plot_temp_at_node(temperatures, x_coords, y_coords, len_x, len_y)
+plot_temp_color_map(temperatures, x_coords, y_coords, len_x, len_y)
