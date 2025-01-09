@@ -1,5 +1,42 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import json
+
+def get_input_variables_from_file(file_path: str = 'input.json'):
+    """
+    Function to read input variables from a JSON file. The file should contain the following variables:
+    n - number of elements in the x direction
+    m - number of elements in the y direction
+    len_x - length of the plate in the x direction
+    len_y - length of the plate in the y direction
+    t0 - temperature on the left and right side of the plate
+    tf - temperature on the top and bottom side of the plate
+    x - where the material changes
+    k1 - thermal conductivity of the material on the left side of the plate
+    k2 - thermal conductivity of the material on the right side of the plate
+    q - heat flux on the top side of the plate
+
+
+    :param file_path: path to the file containing the input variables. Default is 'input.json'.
+    :return input_variables: dictionary containing the input variables. If the file is not found, a FileNotFoundError is raised.
+    """
+
+    try:
+        with open(file_path, 'r') as file:
+            input_variables = json.load(file)
+
+            n = input_variables['n']
+            m = input_variables['m']
+            len_x = input_variables['len_x']
+            len_y = input_variables['len_y']
+
+            input_variables['h_x'] = len_x / n
+            input_variables['h_y'] = len_y / m
+
+    except FileNotFoundError:
+        raise FileNotFoundError(f'File {file_path} not found')
+
+    return input_variables
 
 def get_local_matrix(h_x, h_y, k):
     K11 = (k/(3*h_x*h_y))*(h_y**2 + h_x**2)
@@ -75,6 +112,16 @@ def dirichlet(global_matrix, n,m,t0,tf):
     
     return F, global_matrix
 
+
+# neumann boundary conditions and updated load vector
+def neumann(load_vector, n, m, h_x, h_y, q):
+    num_nodes_x = n + 1
+    for i in range(num_nodes_x):
+        node_index = (m * num_nodes_x) + i  # nodes along the top boundary
+        load_vector[node_index] += q * h_x  # contribution of heat flux over each element's length
+    return load_vector
+
+
 def solve_for_temperatures(global_matrix, load_vector):
     return np.linalg.solve(global_matrix, load_vector)
 
@@ -136,25 +183,30 @@ def plot_temp_color_map(temperatures, x_coords, y_coords, len_x, len_y):
     plt.ylabel('y')
     plt.title('temperatures at nodes')
     plt.show()
-    
-# dane z wykładów
-n = 20  
-m = 20
-len_x = 1.0
-len_y = 1.0  
-h_x = len_x / n  
-h_y = len_y / m  
-t0 = 100.0
-tf = 270.0 
-# x is where the material changes
-x = 0.5
-k1 = 0.1
-k2 = 50
+
+input_variables = get_input_variables_from_file()
+
+n = input_variables['n']
+m = input_variables['m']
+len_x = input_variables['len_x']
+len_y = input_variables['len_y']
+h_x = input_variables['h_x']
+h_y = input_variables['h_y']
+t0 = input_variables['t0']
+tf = input_variables['tf']
+x = input_variables['x']
+k1 = input_variables['k1']
+k2 = input_variables['k2']
+q = input_variables['q']
+
 
 global_matrix = get_global_matrix(n, m, h_x, h_y, x, k1, k2)
 print(global_matrix)
 
 load_vector, global_matrix_updated = dirichlet(global_matrix, n,m,t0,tf)
+
+load_vector = neumann(load_vector, n, m, h_x, h_y, q)
+
 print(load_vector)
 print(global_matrix_updated)
 
