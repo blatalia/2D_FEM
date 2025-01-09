@@ -45,15 +45,19 @@ def get_input_variables_from_file(file_path: str = 'input.json'):
     h_y = input_variables['h_y']
     t0 = input_variables['t0']
     tf = input_variables['tf']
+    t_top = input_variables['t_top']
+    t_bottom = input_variables['t_bottom']
     x = input_variables['x']
     k1 = input_variables['k1']
     k2 = input_variables['k2']
+    q_right = input_variables['q_right']
+    q_left = input_variables['q_left']
     q_bottom = input_variables['q_bottom']
     q_top = input_variables['q_top']
 
-    return n, m, len_x, len_y, h_x, h_y, t0, tf, x, k1, k2, q_bottom, q_top
+    return n, m, len_x, len_y, h_x, h_y, t0, tf, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top
 
-n, m, len_x, len_y, h_x, h_y, t0, tf, x, k1, k2, q_bottom, q_top = get_input_variables_from_file()
+n, m, len_x, len_y, h_x, h_y, t0, tf, t_top, t_bottom,x, k1, k2, q_right, q_left, q_bottom, q_top = get_input_variables_from_file()
 num_nodes_x = n + 1
 num_nodes_y = m + 1
 total_nodes = num_nodes_x * num_nodes_y
@@ -139,6 +143,53 @@ def dirichlet_right(global_matrix, load_vector, n, m, t_right):
 
     return global_matrix, load_vector
 
+def dirichlet_bottom(global_matrix, load_vector, n, m, t_bottom):
+    """
+    apply Dirichlet boundary conditions on the bottom boundary (y = 0).
+    """
+
+    for i in range(num_nodes_x):
+        node_index = i  # nodes on the bottom boundary
+        load_vector[node_index] = t_bottom
+        global_matrix[node_index, :] = 0
+        global_matrix[node_index, node_index] = 1
+
+    return global_matrix, load_vector
+
+def dirichlet_top(global_matrix, load_vector, n, m, t_top):
+    """
+    apply Dirichlet boundary conditions on the top boundary (y = len_y).
+    """
+
+    for i in range(num_nodes_x):
+        node_index = m * num_nodes_x + i  # nodes on the top boundary
+        load_vector[node_index] = t_top
+        global_matrix[node_index, :] = 0
+        global_matrix[node_index, node_index] = 1
+
+    return global_matrix, load_vector
+
+def neumann_left(load_vector, n, m, h_y, q_left):
+    """
+    apply Neumann boundary conditions on the left boundary (x = 0).
+    """
+
+    for j in range(num_nodes_y):
+        node_index = j * num_nodes_x  # nodes along the left boundary
+        load_vector[node_index] += q_left * h_y  # contribution of heat flux over element's length
+
+    return load_vector
+
+def neumann_right(load_vector, n, m, h_y, q_right):
+    """
+    apply Neumann boundary conditions on the right boundary (x = len_x).
+    """
+
+    for j in range(num_nodes_y):
+        node_index = j * num_nodes_x + n  # nodes along the right boundary
+        load_vector[node_index] += q_right * h_y  # contribution of heat flux over element's length
+
+    return load_vector
 
 # Top Neumann boundary conditions
 def neumann_top(load_vector, n, m, h_x, q_top):
@@ -213,7 +264,7 @@ def plot_temp_at_node(temperatures, x_coords, y_coords, len_x, len_y):
     plt.savefig('temp_at_node.png')
     plt.show()
 
-def plot_temp_color_map(temperatures, x_coords, y_coords, len_x, len_y):
+def plot_temp_color_mesh(temperatures, x_coords, y_coords, len_x, len_y):
     fig = plt.figure()
     ax = fig.add_subplot()
     ax.hlines(y_coords, 0, len_x, color='black', linestyle='-', lw=0.3)
@@ -225,18 +276,30 @@ def plot_temp_color_map(temperatures, x_coords, y_coords, len_x, len_y):
     plt.xlabel('x')
     plt.ylabel('y')
     plt.title('temperatures at nodes')
+    plt.savefig('temp_color_mesh.png')
+    plt.show()
+
+def plot_temp_color_map(temperatures, x_coords, y_coords, len_x, len_y):
+    fig = plt.figure()
+    ax = fig.add_subplot()
+    
+    plt.pcolormesh(x_coords, y_coords, temperatures.reshape(x_coords.shape))
+    plt.colorbar()
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.title('temperatures at nodes')
     plt.savefig('temp_color_map.png')
     plt.show()
 
-global_matrix = get_global_matrix(n, m, h_x, h_y, x, k1, k2)
+global_matrix = get_global_matrix(n, m, h_x, h_y, x, k1, None)
 print(global_matrix)
 
 load_vector = np.zeros(global_matrix.shape[0])  # initialize load vector
 
-global_matrix, load_vector = dirichlet_left(global_matrix, load_vector, n, m, t0)
-global_matrix, load_vector = dirichlet_right(global_matrix, load_vector, n, m, tf)
-load_vector = neumann_top(load_vector, n, m, h_x, q_top)
-load_vector = neumann_bottom(load_vector, n, m, h_x, q_bottom)
+global_matrix, load_vector = dirichlet_top(global_matrix, load_vector, n, m, t_top)
+global_matrix, load_vector = dirichlet_bottom(global_matrix, load_vector, n, m, t_bottom)
+load_vector = neumann_left(load_vector, n, m, h_x, q_left)
+load_vector = neumann_right(load_vector, n, m, h_x, q_right)
 
 print(load_vector)
 print(global_matrix)
@@ -255,4 +318,5 @@ x_coords, y_coords = get_node_coords(n, m, len_x, len_y)
 plot_nodes(x_coords, y_coords, len_x, len_y)
 
 plot_temp_at_node(temperatures, x_coords, y_coords, len_x, len_y)
+plot_temp_color_mesh(temperatures, x_coords, y_coords, len_x, len_y)
 plot_temp_color_map(temperatures, x_coords, y_coords, len_x, len_y)
