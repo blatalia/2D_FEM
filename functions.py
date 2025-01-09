@@ -149,6 +149,8 @@ global_matrix, load_vector = apply_openings(global_matrix, load_vector, openings
 temperatures = solve_for_temperatures(global_matrix, load_vector)
 print(temperatures)
 
+np.savetxt('global_matrix.txt', global_matrix)
+np.savetxt('load_vector.txt', load_vector)
 np.savetxt('temperatures.txt', temperatures)
 
 def get_temperature_along_line(temperatures, x_coords, y_coords, line_type='horizontal', line_position=0.5):
