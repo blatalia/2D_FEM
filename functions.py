@@ -246,23 +246,23 @@ def plot_nodes(x_coords, y_coords, len_x, len_y):
     plt.show()
 
 def plot_temp_at_node(temperatures, x_coords, y_coords, len_x, len_y):
-    fig = plt.figure()
+    fig = plt.figure(figsize=(20, 15))  # Increase figure size for better readability
     ax = fig.add_subplot()
     ax.hlines(y_coords, 0, len_x, color='black', linestyle='-', lw=0.6)
     ax.vlines(x_coords, 0, len_y, color='black', linestyle='-', lw=0.6)
     plt.plot(x_coords, y_coords, '.', color='black')
     
-    
     for i, temp in enumerate(temperatures, start=1):
         x = x_coords.flatten()[i-1]
         y = y_coords.flatten()[i-1]
-        ax.text(x, y, f'{temp:.2f}', color='black', fontsize=8)
+        ax.text(x, y, f'{temp:.2f}', color='black', fontsize=12)  # Increase font size
 
     plt.xlabel('x')
     plt.ylabel('y')
-    plt.title('temperatures at nodes')
+    plt.title('Temperatures at Nodes')
     plt.savefig('temp_at_node.png')
     plt.show()
+
 
 def plot_temp_color_mesh(temperatures, x_coords, y_coords, len_x, len_y):
     fig = plt.figure()
@@ -320,3 +320,70 @@ plot_nodes(x_coords, y_coords, len_x, len_y)
 plot_temp_at_node(temperatures, x_coords, y_coords, len_x, len_y)
 plot_temp_color_mesh(temperatures, x_coords, y_coords, len_x, len_y)
 plot_temp_color_map(temperatures, x_coords, y_coords, len_x, len_y)
+
+
+def interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='horizontal', position=0.5, num_points=10):
+    """
+    Interpolate temperatures along a specific line using shape functions, with more points for smoother interpolation.
+
+    :param temperatures: Flattened array of temperatures at nodes
+    :param x_coords: 2D array of x-coordinates of nodes
+    :param y_coords: 2D array of y-coordinates of nodes
+    :param line: 'horizontal' or 'vertical' line
+    :param position: Relative position of the line (0 to 1), e.g., 0.5 for centerline
+    :param num_points: Number of interpolation points between each node
+    """
+    num_nodes_x = x_coords.shape[1]
+    num_nodes_y = y_coords.shape[0]
+
+    if line == 'horizontal':
+        y_pos = position * y_coords.max()
+        row_index = int(position * (num_nodes_y - 1))
+        x_line = x_coords[row_index, :]
+        temps_line = temperatures[row_index * num_nodes_x:(row_index + 1) * num_nodes_x]
+    elif line == 'vertical':
+        x_pos = position * x_coords.max()
+        col_index = int(position * (num_nodes_x - 1))
+        y_line = y_coords[:, col_index]
+        temps_line = temperatures[col_index::num_nodes_x]
+
+    interpolated_x = []
+    interpolated_temps = []
+
+    for i in range(len(temps_line) - 1):
+        x_start = x_line[i] if line == 'horizontal' else y_line[i]
+        x_end = x_line[i + 1] if line == 'horizontal' else y_line[i + 1]
+        temp_start = temps_line[i]
+        temp_end = temps_line[i + 1]
+
+        for j in range(num_points + 1):
+            xi = j / num_points
+            N1 = 1 - xi  # Shape function for the first node
+            N2 = xi      # Shape function for the second node
+            interpolated_temp = N1 * temp_start + N2 * temp_end
+            interpolated_pos = N1 * x_start + N2 * x_end
+
+            interpolated_x.append(interpolated_pos)
+            interpolated_temps.append(interpolated_temp)
+
+    plt.figure(figsize=(10, 6))
+    if line == 'horizontal':
+        plt.plot(interpolated_x, interpolated_temps, '-o', label=f'Temperature along y={y_pos:.2f}')
+        plt.xlabel('X-coordinate')
+    elif line == 'vertical':
+        plt.plot(interpolated_x, interpolated_temps, '-o', label=f'Temperature along x={x_pos:.2f}')
+        plt.xlabel('Y-coordinate')
+
+    plt.ylabel('Temperature')
+    plt.title('Temperature Distribution Along Line')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig('temp_along_line.png')
+    plt.show()
+
+
+
+
+#interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='vertical', position=0.5)
+interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='horizontal', position=0.5, num_points=20)
+
