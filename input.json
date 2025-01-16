@@ -13,5 +13,9 @@
      "q_left": 100,
      "q_right": 100,
      "q_bottom": 100,
-     "q_top": 0
+     "q_top": 0,
+     "bc_top":  "Neumann",
+     "bc_bottom": "Dirichlet",
+     "bc_left": "Neumann",
+     "bc_right": "Neumann"
 }

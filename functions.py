@@ -16,6 +16,10 @@ def get_input_variables_from_file(file_path: str = 'input.json'):
     k1 - thermal conductivity of the material on the left side of the plate
     k2 - thermal conductivity of the material on the right side of the plate
     q - heat flux on the top side of the plate
+    bc_top - boundary condition on the top side of the plate (Dirichlet or Neumann)
+    bc_bottom - boundary condition on the bottom side of the plate (Dirichlet or Neumann)
+    bc_left - boundary condition on the left side of the plate (Dirichlet or Neumann)
+    bc_right - boundary condition on the right side of the plate (Dirichlet or Neumann)
 
 
     :param file_path: path to the file containing the input variables. Default is 'input.json'.
@@ -54,14 +58,12 @@ def get_input_variables_from_file(file_path: str = 'input.json'):
     q_left = input_variables['q_left']
     q_bottom = input_variables['q_bottom']
     q_top = input_variables['q_top']
+    bc_top = input_variables['bc_top']
+    bc_bottom = input_variables['bc_bottom']
+    bc_left = input_variables['bc_left']
+    bc_right = input_variables['bc_right']
 
-    return n, m, len_x, len_y, h_x, h_y, t0, tf, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top
-
-n, m, len_x, len_y, h_x, h_y, t0, tf, t_top, t_bottom,x, k1, k2, q_right, q_left, q_bottom, q_top = get_input_variables_from_file()
-num_nodes_x = n + 1
-num_nodes_y = m + 1
-total_nodes = num_nodes_x * num_nodes_y
-
+    return n, m, len_x, len_y, h_x, h_y, t0, tf, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right
 
 def get_local_matrix(h_x, h_y, k):
     K11 = (k/(3*h_x*h_y))*(h_y**2 + h_x**2)
@@ -83,7 +85,7 @@ def get_local_matrix(h_x, h_y, k):
     return np.array([[K11, K12, K13, K14], [K21, K22, K23, K24], [K31, K32, K33, K34], [K41, K42, K43, K44]])
 
 
-def get_global_matrix(n, m, h_x, h_y, x, k1, k2):
+def get_global_matrix(n, m, h_x, h_y, x, k1, k2, total_nodes, num_nodes_x):
     if k2 == None:
         k2 = k1
 
@@ -115,7 +117,7 @@ def get_global_matrix(n, m, h_x, h_y, x, k1, k2):
 
 
 # left Dirichlet boundary conditions
-def dirichlet_left(global_matrix, load_vector, n, m, t_left):
+def dirichlet_left(global_matrix, load_vector, n, m, t_left, num_nodes_y):
     """
     apply Dirichlet boundary conditions on the left boundary (x = 0).
     """
@@ -130,7 +132,7 @@ def dirichlet_left(global_matrix, load_vector, n, m, t_left):
 
 
 # right Dirichlet boundary conditions
-def dirichlet_right(global_matrix, load_vector, n, m, t_right):
+def dirichlet_right(global_matrix, load_vector, n, m, t_right, num_nodes_y):
     """
     apply Dirichlet boundary conditions on the right boundary (x = len_x).
     """
@@ -143,7 +145,7 @@ def dirichlet_right(global_matrix, load_vector, n, m, t_right):
 
     return global_matrix, load_vector
 
-def dirichlet_bottom(global_matrix, load_vector, n, m, t_bottom):
+def dirichlet_bottom(global_matrix, load_vector, n, m, t_bottom, num_nodes_x):
     """
     apply Dirichlet boundary conditions on the bottom boundary (y = 0).
     """
@@ -156,7 +158,7 @@ def dirichlet_bottom(global_matrix, load_vector, n, m, t_bottom):
 
     return global_matrix, load_vector
 
-def dirichlet_top(global_matrix, load_vector, n, m, t_top):
+def dirichlet_top(global_matrix, load_vector, n, m, t_top, num_nodes_x):
     """
     apply Dirichlet boundary conditions on the top boundary (y = len_y).
     """
@@ -169,7 +171,7 @@ def dirichlet_top(global_matrix, load_vector, n, m, t_top):
 
     return global_matrix, load_vector
 
-def neumann_left(load_vector, n, m, h_y, q_left):
+def neumann_left(load_vector, n, m, h_y, q_left, num_nodes_y, num_nodes_x):
     """
     apply Neumann boundary conditions on the left boundary (x = 0).
     """
@@ -180,7 +182,7 @@ def neumann_left(load_vector, n, m, h_y, q_left):
 
     return load_vector
 
-def neumann_right(load_vector, n, m, h_y, q_right):
+def neumann_right(load_vector, n, m, h_y, q_right, num_nodes_y, num_nodes_x):
     """
     apply Neumann boundary conditions on the right boundary (x = len_x).
     """
@@ -192,7 +194,7 @@ def neumann_right(load_vector, n, m, h_y, q_right):
     return load_vector
 
 # Top Neumann boundary conditions
-def neumann_top(load_vector, n, m, h_x, q_top):
+def neumann_top(load_vector, n, m, h_x, q_top, num_nodes_x):
     """
     apply Neumann boundary conditions on the top boundary (y = len_y).
     """
@@ -204,7 +206,7 @@ def neumann_top(load_vector, n, m, h_x, q_top):
 
 
 # bottom Neumann boundary conditions
-def neumann_bottom(load_vector, n, m, h_x, q_bottom):
+def neumann_bottom(load_vector, n, m, h_x, q_bottom, num_nodes_x):
     """
     apply Neumann boundary conditions on the bottom boundary (y = 0).
     """
@@ -291,15 +293,61 @@ def plot_temp_color_map(temperatures, x_coords, y_coords, len_x, len_y):
     plt.savefig('temp_color_map.png')
     plt.show()
 
-global_matrix = get_global_matrix(n, m, h_x, h_y, x, k1, None)
-print(global_matrix)
 
-load_vector = np.zeros(global_matrix.shape[0])  # initialize load vector
+def apply_bc():
+    """
+    Function to first gather the input variables from input.json,
+    then apply the boundary conditions, and finally solve for the temperatures.
 
-global_matrix, load_vector = dirichlet_top(global_matrix, load_vector, n, m, t_top)
-global_matrix, load_vector = dirichlet_bottom(global_matrix, load_vector, n, m, t_bottom)
-load_vector = neumann_left(load_vector, n, m, h_x, q_left)
-load_vector = neumann_right(load_vector, n, m, h_x, q_right)
+    :return:
+    global_matrix: modified global matrix after applying boundary conditions
+    load_vector: modified load vector after applying boundary conditions
+    temperatures: array of temperatures at nodes
+    x_coords: 2D array of x-coordinates of nodes
+    y_coords: 2D array of y-coordinates of nodes
+    len_x: length of the plate in the x direction
+    len_y: length of the plate in the y direction
+    num_nodes_x: number of nodes in the x direction
+    num_nodes_y: number of nodes in the y direction
+    total_nodes: total number of nodes
+    """
+    n, m, len_x, len_y, h_x, h_y, t0, tf, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right = get_input_variables_from_file()
+
+    num_nodes_x = n + 1
+    num_nodes_y = m + 1
+    total_nodes = num_nodes_x * num_nodes_y
+
+    global_matrix = get_global_matrix(n, m, h_x, h_y, x, k1, k2, total_nodes, num_nodes_x)
+    load_vector = np.zeros(global_matrix.shape[0])  # initialize load vector
+
+    if bc_top == 'Dirichlet':
+        global_matrix, load_vector = dirichlet_top(global_matrix, load_vector, n, m, t_top)
+    elif bc_top == 'Neumann':
+        load_vector = neumann_top(load_vector, n, m, h_x, q_top, num_nodes_x)
+
+    if bc_bottom == 'Dirichlet':
+        global_matrix, load_vector = dirichlet_bottom(global_matrix, load_vector, n, m, t_bottom, num_nodes_x)
+    elif bc_bottom == 'Neumann':
+        load_vector = neumann_bottom(load_vector, n, m, h_x, q_bottom, num_nodes_x)
+
+    if bc_left == 'Dirichlet':
+        global_matrix, load_vector = dirichlet_left(global_matrix, load_vector, n, m, t0, num_nodes_y)
+    elif bc_left == 'Neumann':
+        load_vector = neumann_left(load_vector, n, m, h_y, q_left, num_nodes_y, num_nodes_x)
+
+    if bc_right == 'Dirichlet':
+        global_matrix, load_vector = dirichlet_right(global_matrix, load_vector, n, m, tf, num_nodes_y)
+    elif bc_right == 'Neumann':
+        load_vector = neumann_right(load_vector, n, m, h_y, q_right, num_nodes_y=num_nodes_y, num_nodes_x=num_nodes_x)
+
+    temperatures = solve_for_temperatures(global_matrix, load_vector)
+
+    x_coords, y_coords = get_node_coords(n, m, len_x, len_y)
+
+    return global_matrix, load_vector, temperatures, x_coords, y_coords, len_x, len_y, num_nodes_x, num_nodes_y, total_nodes
+
+
+global_matrix, load_vector, temperatures, x_coords, y_coords, len_x, len_y, num_nodes_x, num_nodes_y, total_nodes = apply_bc()
 
 print(load_vector)
 print(global_matrix)
@@ -308,13 +356,11 @@ print(global_matrix)
 np.savetxt('global_matrix.txt', global_matrix)
 np.savetxt('load_vector.txt', load_vector)
 
-temperatures = solve_for_temperatures(global_matrix, load_vector)
 print(temperatures)
 
 # save the temperatures
 np.savetxt('temperatures.txt', temperatures)
 
-x_coords, y_coords = get_node_coords(n, m, len_x, len_y)
 plot_nodes(x_coords, y_coords, len_x, len_y)
 
 plot_temp_at_node(temperatures, x_coords, y_coords, len_x, len_y)
@@ -380,9 +426,6 @@ def interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='h
     plt.grid(True)
     plt.savefig('temp_along_line.png')
     plt.show()
-
-
-
 
 #interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='vertical', position=0.5)
 interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='horizontal', position=0.5, num_points=20)
