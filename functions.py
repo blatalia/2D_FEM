@@ -299,7 +299,17 @@ def apply_bc():
     Function to first gather the input variables from input.json,
     then apply the boundary conditions, and finally solve for the temperatures.
 
-    :return: global_matrix, load_vector, temperatures, x_coords, y_coords, len_x, len_y, num_nodes_x, num_nodes_y, total_nodes
+    :return:
+    global_matrix: modified global matrix after applying boundary conditions
+    load_vector: modified load vector after applying boundary conditions
+    temperatures: array of temperatures at nodes
+    x_coords: 2D array of x-coordinates of nodes
+    y_coords: 2D array of y-coordinates of nodes
+    len_x: length of the plate in the x direction
+    len_y: length of the plate in the y direction
+    num_nodes_x: number of nodes in the x direction
+    num_nodes_y: number of nodes in the y direction
+    total_nodes: total number of nodes
     """
     n, m, len_x, len_y, h_x, h_y, t0, tf, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right = get_input_variables_from_file()
 
@@ -416,9 +426,6 @@ def interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='h
     plt.grid(True)
     plt.savefig('temp_along_line.png')
     plt.show()
-
-
-
 
 #interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='vertical', position=0.5)
 interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='horizontal', position=0.5, num_points=20)
