@@ -16,6 +16,10 @@ def get_input_variables_from_file(file_path: str = 'input.json'):
     k1 - thermal conductivity of the material on the left side of the plate
     k2 - thermal conductivity of the material on the right side of the plate
     q - heat flux on the top side of the plate
+    bc_top - boundary condition on the top side of the plate (Dirichlet or Neumann)
+    bc_bottom - boundary condition on the bottom side of the plate (Dirichlet or Neumann)
+    bc_left - boundary condition on the left side of the plate (Dirichlet or Neumann)
+    bc_right - boundary condition on the right side of the plate (Dirichlet or Neumann)
 
 
     :param file_path: path to the file containing the input variables. Default is 'input.json'.
@@ -54,14 +58,12 @@ def get_input_variables_from_file(file_path: str = 'input.json'):
     q_left = input_variables['q_left']
     q_bottom = input_variables['q_bottom']
     q_top = input_variables['q_top']
+    bc_top = input_variables['bc_top']
+    bc_bottom = input_variables['bc_bottom']
+    bc_left = input_variables['bc_left']
+    bc_right = input_variables['bc_right']
 
-    return n, m, len_x, len_y, h_x, h_y, t0, tf, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top
-
-n, m, len_x, len_y, h_x, h_y, t0, tf, t_top, t_bottom,x, k1, k2, q_right, q_left, q_bottom, q_top = get_input_variables_from_file()
-num_nodes_x = n + 1
-num_nodes_y = m + 1
-total_nodes = num_nodes_x * num_nodes_y
-
+    return n, m, len_x, len_y, h_x, h_y, t0, tf, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right
 
 def get_local_matrix(h_x, h_y, k):
     K11 = (k/(3*h_x*h_y))*(h_y**2 + h_x**2)
@@ -291,15 +293,51 @@ def plot_temp_color_map(temperatures, x_coords, y_coords, len_x, len_y):
     plt.savefig('temp_color_map.png')
     plt.show()
 
-global_matrix = get_global_matrix(n, m, h_x, h_y, x, k1, None)
-print(global_matrix)
 
-load_vector = np.zeros(global_matrix.shape[0])  # initialize load vector
+def apply_bc():
+    """
+    Function to first gather the input variables from input.json,
+    then apply the boundary conditions, and finally solve for the temperatures.
 
-global_matrix, load_vector = dirichlet_top(global_matrix, load_vector, n, m, t_top)
-global_matrix, load_vector = dirichlet_bottom(global_matrix, load_vector, n, m, t_bottom)
-load_vector = neumann_left(load_vector, n, m, h_x, q_left)
-load_vector = neumann_right(load_vector, n, m, h_x, q_right)
+    :return: global_matrix, load_vector, temperatures, x_coords, y_coords, len_x, len_y, num_nodes_x, num_nodes_y, total_nodes
+    """
+    n, m, len_x, len_y, h_x, h_y, t0, tf, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right = get_input_variables_from_file()
+
+    num_nodes_x = n + 1
+    num_nodes_y = m + 1
+    total_nodes = num_nodes_x * num_nodes_y
+
+    global_matrix = get_global_matrix(n, m, h_x, h_y, x, k1, k2)
+    load_vector = np.zeros(global_matrix.shape[0])  # initialize load vector
+
+    if bc_top == 'Dirichlet':
+        global_matrix, load_vector = dirichlet_top(global_matrix, load_vector, n, m, t_top)
+    elif bc_top == 'Neumann':
+        load_vector = neumann_top(load_vector, n, m, h_x, q_top)
+
+    if bc_bottom == 'Dirichlet':
+        global_matrix, load_vector = dirichlet_bottom(global_matrix, load_vector, n, m, t_bottom)
+    elif bc_bottom == 'Neumann':
+        load_vector = neumann_bottom(load_vector, n, m, h_x, q_bottom)
+
+    if bc_left == 'Dirichlet':
+        global_matrix, load_vector = dirichlet_left(global_matrix, load_vector, n, m, t0)
+    elif bc_left == 'Neumann':
+        load_vector = neumann_left(load_vector, n, m, h_y, q_left)
+
+    if bc_right == 'Dirichlet':
+        global_matrix, load_vector = dirichlet_right(global_matrix, load_vector, n, m, tf)
+    elif bc_right == 'Neumann':
+        load_vector = neumann_right(load_vector, n, m, h_y, q_right)
+
+    temperatures = solve_for_temperatures(global_matrix, load_vector)
+
+    x_coords, y_coords = get_node_coords(n, m, len_x, len_y)
+
+    return global_matrix, load_vector, temperatures, x_coords, y_coords, len_x, len_y, num_nodes_x, num_nodes_y, total_nodes
+
+
+global_matrix, load_vector, temperatures, x_coords, y_coords, len_x, len_y, num_nodes_x, num_nodes_y, total_nodes = apply_bc()
 
 print(load_vector)
 print(global_matrix)
@@ -308,13 +346,11 @@ print(global_matrix)
 np.savetxt('global_matrix.txt', global_matrix)
 np.savetxt('load_vector.txt', load_vector)
 
-temperatures = solve_for_temperatures(global_matrix, load_vector)
 print(temperatures)
 
 # save the temperatures
 np.savetxt('temperatures.txt', temperatures)
 
-x_coords, y_coords = get_node_coords(n, m, len_x, len_y)
 plot_nodes(x_coords, y_coords, len_x, len_y)
 
 plot_temp_at_node(temperatures, x_coords, y_coords, len_x, len_y)
