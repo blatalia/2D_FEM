@@ -85,7 +85,7 @@ def get_local_matrix(h_x, h_y, k):
     return np.array([[K11, K12, K13, K14], [K21, K22, K23, K24], [K31, K32, K33, K34], [K41, K42, K43, K44]])
 
 
-def get_global_matrix(n, m, h_x, h_y, x, k1, k2):
+def get_global_matrix(n, m, h_x, h_y, x, k1, k2, total_nodes, num_nodes_x):
     if k2 == None:
         k2 = k1
 
@@ -117,7 +117,7 @@ def get_global_matrix(n, m, h_x, h_y, x, k1, k2):
 
 
 # left Dirichlet boundary conditions
-def dirichlet_left(global_matrix, load_vector, n, m, t_left):
+def dirichlet_left(global_matrix, load_vector, n, m, t_left, num_nodes_y):
     """
     apply Dirichlet boundary conditions on the left boundary (x = 0).
     """
@@ -132,7 +132,7 @@ def dirichlet_left(global_matrix, load_vector, n, m, t_left):
 
 
 # right Dirichlet boundary conditions
-def dirichlet_right(global_matrix, load_vector, n, m, t_right):
+def dirichlet_right(global_matrix, load_vector, n, m, t_right, num_nodes_y):
     """
     apply Dirichlet boundary conditions on the right boundary (x = len_x).
     """
@@ -145,7 +145,7 @@ def dirichlet_right(global_matrix, load_vector, n, m, t_right):
 
     return global_matrix, load_vector
 
-def dirichlet_bottom(global_matrix, load_vector, n, m, t_bottom):
+def dirichlet_bottom(global_matrix, load_vector, n, m, t_bottom, num_nodes_x):
     """
     apply Dirichlet boundary conditions on the bottom boundary (y = 0).
     """
@@ -158,7 +158,7 @@ def dirichlet_bottom(global_matrix, load_vector, n, m, t_bottom):
 
     return global_matrix, load_vector
 
-def dirichlet_top(global_matrix, load_vector, n, m, t_top):
+def dirichlet_top(global_matrix, load_vector, n, m, t_top, num_nodes_x):
     """
     apply Dirichlet boundary conditions on the top boundary (y = len_y).
     """
@@ -171,7 +171,7 @@ def dirichlet_top(global_matrix, load_vector, n, m, t_top):
 
     return global_matrix, load_vector
 
-def neumann_left(load_vector, n, m, h_y, q_left):
+def neumann_left(load_vector, n, m, h_y, q_left, num_nodes_y, num_nodes_x):
     """
     apply Neumann boundary conditions on the left boundary (x = 0).
     """
@@ -182,7 +182,7 @@ def neumann_left(load_vector, n, m, h_y, q_left):
 
     return load_vector
 
-def neumann_right(load_vector, n, m, h_y, q_right):
+def neumann_right(load_vector, n, m, h_y, q_right, num_nodes_y, num_nodes_x):
     """
     apply Neumann boundary conditions on the right boundary (x = len_x).
     """
@@ -194,7 +194,7 @@ def neumann_right(load_vector, n, m, h_y, q_right):
     return load_vector
 
 # Top Neumann boundary conditions
-def neumann_top(load_vector, n, m, h_x, q_top):
+def neumann_top(load_vector, n, m, h_x, q_top, num_nodes_x):
     """
     apply Neumann boundary conditions on the top boundary (y = len_y).
     """
@@ -206,7 +206,7 @@ def neumann_top(load_vector, n, m, h_x, q_top):
 
 
 # bottom Neumann boundary conditions
-def neumann_bottom(load_vector, n, m, h_x, q_bottom):
+def neumann_bottom(load_vector, n, m, h_x, q_bottom, num_nodes_x):
     """
     apply Neumann boundary conditions on the bottom boundary (y = 0).
     """
@@ -317,28 +317,28 @@ def apply_bc():
     num_nodes_y = m + 1
     total_nodes = num_nodes_x * num_nodes_y
 
-    global_matrix = get_global_matrix(n, m, h_x, h_y, x, k1, k2)
+    global_matrix = get_global_matrix(n, m, h_x, h_y, x, k1, k2, total_nodes, num_nodes_x)
     load_vector = np.zeros(global_matrix.shape[0])  # initialize load vector
 
     if bc_top == 'Dirichlet':
         global_matrix, load_vector = dirichlet_top(global_matrix, load_vector, n, m, t_top)
     elif bc_top == 'Neumann':
-        load_vector = neumann_top(load_vector, n, m, h_x, q_top)
+        load_vector = neumann_top(load_vector, n, m, h_x, q_top, num_nodes_x)
 
     if bc_bottom == 'Dirichlet':
-        global_matrix, load_vector = dirichlet_bottom(global_matrix, load_vector, n, m, t_bottom)
+        global_matrix, load_vector = dirichlet_bottom(global_matrix, load_vector, n, m, t_bottom, num_nodes_x)
     elif bc_bottom == 'Neumann':
-        load_vector = neumann_bottom(load_vector, n, m, h_x, q_bottom)
+        load_vector = neumann_bottom(load_vector, n, m, h_x, q_bottom, num_nodes_x)
 
     if bc_left == 'Dirichlet':
-        global_matrix, load_vector = dirichlet_left(global_matrix, load_vector, n, m, t0)
+        global_matrix, load_vector = dirichlet_left(global_matrix, load_vector, n, m, t0, num_nodes_y)
     elif bc_left == 'Neumann':
-        load_vector = neumann_left(load_vector, n, m, h_y, q_left)
+        load_vector = neumann_left(load_vector, n, m, h_y, q_left, num_nodes_y, num_nodes_x)
 
     if bc_right == 'Dirichlet':
-        global_matrix, load_vector = dirichlet_right(global_matrix, load_vector, n, m, tf)
+        global_matrix, load_vector = dirichlet_right(global_matrix, load_vector, n, m, tf, num_nodes_y)
     elif bc_right == 'Neumann':
-        load_vector = neumann_right(load_vector, n, m, h_y, q_right)
+        load_vector = neumann_right(load_vector, n, m, h_y, q_right, num_nodes_y=num_nodes_y, num_nodes_x=num_nodes_x)
 
     temperatures = solve_for_temperatures(global_matrix, load_vector)
 
