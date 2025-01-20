@@ -367,66 +367,133 @@ plot_temp_at_node(temperatures, x_coords, y_coords, len_x, len_y)
 plot_temp_color_mesh(temperatures, x_coords, y_coords, len_x, len_y)
 plot_temp_color_map(temperatures, x_coords, y_coords, len_x, len_y)
 
-
-def interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='horizontal', position=0.5, num_points=10):
+def interpolate_temperature_2d(temperatures, x_coords, y_coords, num_points=10):
     """
-    Interpolate temperatures along a specific line using shape functions, with more points for smoother interpolation.
+    Interpolate temperatures over the entire 2D domain using shape functions.
 
     :param temperatures: Flattened array of temperatures at nodes
     :param x_coords: 2D array of x-coordinates of nodes
     :param y_coords: 2D array of y-coordinates of nodes
-    :param line: 'horizontal' or 'vertical' line
-    :param position: Relative position of the line (0 to 1), e.g., 0.5 for centerline
-    :param num_points: Number of interpolation points between each node
+    :param num_points: Number of interpolation points between each pair of nodes
     """
     num_nodes_x = x_coords.shape[1]
     num_nodes_y = y_coords.shape[0]
 
-    if line == 'horizontal':
-        y_pos = position * y_coords.max()
-        row_index = int(position * (num_nodes_y - 1))
-        x_line = x_coords[row_index, :]
-        temps_line = temperatures[row_index * num_nodes_x:(row_index + 1) * num_nodes_x]
-    elif line == 'vertical':
-        x_pos = position * x_coords.max()
-        col_index = int(position * (num_nodes_x - 1))
-        y_line = y_coords[:, col_index]
-        temps_line = temperatures[col_index::num_nodes_x]
+    # fine grid for interpolation
+    fine_x = np.linspace(0, x_coords.max(), (num_nodes_x - 1) * num_points + 1)
+    fine_y = np.linspace(0, y_coords.max(), (num_nodes_y - 1) * num_points + 1)
+    fine_xx, fine_yy = np.meshgrid(fine_x, fine_y)
 
-    interpolated_x = []
-    interpolated_temps = []
+    fine_temperatures = np.zeros_like(fine_xx)
 
-    for i in range(len(temps_line) - 1):
-        x_start = x_line[i] if line == 'horizontal' else y_line[i]
-        x_end = x_line[i + 1] if line == 'horizontal' else y_line[i + 1]
-        temp_start = temps_line[i]
-        temp_end = temps_line[i + 1]
+    for i in range(num_nodes_y - 1):
+        for j in range(num_nodes_x - 1):
+            n1 = i * num_nodes_x + j
+            n2 = n1 + 1
+            n3 = n1 + num_nodes_x + 1
+            n4 = n1 + num_nodes_x
 
-        for j in range(num_points + 1):
-            xi = j / num_points
-            N1 = 1 - xi  # Shape function for the first node
-            N2 = xi      # Shape function for the second node
-            interpolated_temp = N1 * temp_start + N2 * temp_end
-            interpolated_pos = N1 * x_start + N2 * x_end
+            # corner coordinates and temperatures
+            x1, y1, t1 = x_coords[i, j], y_coords[i, j], temperatures[n1]
+            x2, y2, t2 = x_coords[i, j + 1], y_coords[i, j + 1], temperatures[n2]
+            x3, y3, t3 = x_coords[i + 1, j + 1], y_coords[i + 1, j + 1], temperatures[n3]
+            x4, y4, t4 = x_coords[i + 1, j], y_coords[i + 1, j], temperatures[n4]
 
-            interpolated_x.append(interpolated_pos)
-            interpolated_temps.append(interpolated_temp)
+            # shape functions
+            def shape_functions(x, y):
+                """Return shape function values N1, N2, N3, N4 for a point (x, y)."""
+                denom = (x2 - x1) * (y3 - y1)
+                N1 = ((x2 - x) * (y3 - y)) / denom
+                N2 = ((x - x1) * (y3 - y)) / denom
+                N3 = ((x - x1) * (y - y1)) / denom
+                N4 = ((x2 - x) * (y - y1)) / denom
+                return N1, N2, N3, N4
 
-    plt.figure(figsize=(10, 6))
-    if line == 'horizontal':
-        plt.plot(interpolated_x, interpolated_temps, '-o', label=f'Temperature along y={y_pos:.2f}')
-        plt.xlabel('X-coordinate')
-    elif line == 'vertical':
-        plt.plot(interpolated_x, interpolated_temps, '-o', label=f'Temperature along x={x_pos:.2f}')
-        plt.xlabel('Y-coordinate')
+            x_fine = fine_x[j * num_points:(j + 1) * num_points + 1]
+            y_fine = fine_y[i * num_points:(i + 1) * num_points + 1]
+            xx_fine, yy_fine = np.meshgrid(x_fine, y_fine)
 
-    plt.ylabel('Temperature')
-    plt.title('Temperature Distribution Along Line')
-    plt.legend()
-    plt.grid(True)
-    plt.savefig('temp_along_line.png')
+            for xi, yi in zip(xx_fine.flatten(), yy_fine.flatten()):
+                N1, N2, N3, N4 = shape_functions(xi, yi)
+                temp = N1 * t1 + N2 * t2 + N3 * t3 + N4 * t4
+
+                ix = np.searchsorted(fine_x, xi) - 1
+                iy = np.searchsorted(fine_y, yi) - 1
+                fine_temperatures[iy, ix] = temp
+
+    plt.figure(figsize=(10, 8))
+    plt.pcolormesh(fine_xx, fine_yy, fine_temperatures, shading='auto', cmap='rainbow')
+    plt.colorbar(label='Temperature')
+    plt.xlabel('X-coordinate')
+    plt.ylabel('Y-coordinate')
+    plt.title('Temperature Distribution Across the 2D Domain')
+    plt.savefig('temperature_distribution_2d.png')
     plt.show()
 
-#interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='vertical', position=0.5)
-interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='horizontal', position=0.5, num_points=20)
+interpolate_temperature_2d(temperatures, x_coords, y_coords, num_points=20)
+
+# X-Y graph showing the solution along a specific line TO DO FIX ME - do we get rid of this or leaving as it is?
+
+
+# def interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='horizontal', position=0.5, num_points=10):
+#     """
+#     Interpolate temperatures along a specific line using shape functions, with more points for smoother interpolation.
+
+#     :param temperatures: Flattened array of temperatures at nodes
+#     :param x_coords: 2D array of x-coordinates of nodes
+#     :param y_coords: 2D array of y-coordinates of nodes
+#     :param line: 'horizontal' or 'vertical' line
+#     :param position: Relative position of the line (0 to 1), e.g., 0.5 for centerline
+#     :param num_points: Number of interpolation points between each node
+#     """
+#     num_nodes_x = x_coords.shape[1]
+#     num_nodes_y = y_coords.shape[0]
+
+#     if line == 'horizontal':
+#         y_pos = position * y_coords.max()
+#         row_index = int(position * (num_nodes_y - 1))
+#         x_line = x_coords[row_index, :]
+#         temps_line = temperatures[row_index * num_nodes_x:(row_index + 1) * num_nodes_x]
+#     elif line == 'vertical':
+#         x_pos = position * x_coords.max()
+#         col_index = int(position * (num_nodes_x - 1))
+#         y_line = y_coords[:, col_index]
+#         temps_line = temperatures[col_index::num_nodes_x]
+
+#     interpolated_x = []
+#     interpolated_temps = []
+
+#     for i in range(len(temps_line) - 1):
+#         x_start = x_line[i] if line == 'horizontal' else y_line[i]
+#         x_end = x_line[i + 1] if line == 'horizontal' else y_line[i + 1]
+#         temp_start = temps_line[i]
+#         temp_end = temps_line[i + 1]
+
+#         for j in range(num_points + 1):
+#             xi = j / num_points
+#             N1 = 1 - xi  # Shape function for the first node
+#             N2 = xi      # Shape function for the second node
+#             interpolated_temp = N1 * temp_start + N2 * temp_end
+#             interpolated_pos = N1 * x_start + N2 * x_end
+
+#             interpolated_x.append(interpolated_pos)
+#             interpolated_temps.append(interpolated_temp)
+
+#     plt.figure(figsize=(10, 6))
+#     if line == 'horizontal':
+#         plt.plot(interpolated_x, interpolated_temps, '-o', label=f'Temperature along y={y_pos:.2f}')
+#         plt.xlabel('X-coordinate')
+#     elif line == 'vertical':
+#         plt.plot(interpolated_x, interpolated_temps, '-o', label=f'Temperature along x={x_pos:.2f}')
+#         plt.xlabel('Y-coordinate')
+
+#     plt.ylabel('Temperature')
+#     plt.title('Temperature Distribution Along Line')
+#     plt.legend()
+#     plt.grid(True)
+#     plt.savefig('temp_along_line.png')
+#     plt.show()
+
+# #interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='vertical', position=0.5)
+# interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='horizontal', position=0.5, num_points=20)
 
