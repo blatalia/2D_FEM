@@ -123,7 +123,7 @@ def dirichlet_left(global_matrix, load_vector, n, m, t_left, num_nodes_y):
     """
 
     for j in range(num_nodes_y):
-        node_index = j * num_nodes_x  # nodes on the left boundary
+        node_index = j * num_nodes_y  # nodes on the left boundary
         load_vector[node_index] = t_left
         global_matrix[node_index, :] = 0
         global_matrix[node_index, node_index] = 1
@@ -138,7 +138,7 @@ def dirichlet_right(global_matrix, load_vector, n, m, t_right, num_nodes_y):
     """
 
     for j in range(num_nodes_y):
-        node_index = j * num_nodes_x + n  # nodes on the right boundary
+        node_index = j * num_nodes_y + n  # nodes on the right boundary
         load_vector[node_index] = t_right
         global_matrix[node_index, :] = 0
         global_matrix[node_index, node_index] = 1
@@ -321,7 +321,7 @@ def apply_bc():
     load_vector = np.zeros(global_matrix.shape[0])  # initialize load vector
 
     if bc_top == 'Dirichlet':
-        global_matrix, load_vector = dirichlet_top(global_matrix, load_vector, n, m, t_top)
+        global_matrix, load_vector = dirichlet_top(global_matrix, load_vector, n, m, t_top, num_nodes_x)
     elif bc_top == 'Neumann':
         load_vector = neumann_top(load_vector, n, m, h_x, q_top, num_nodes_x)
 
