@@ -368,22 +368,12 @@ plot_temp_color_mesh(temperatures, x_coords, y_coords, len_x, len_y)
 plot_temp_color_map(temperatures, x_coords, y_coords, len_x, len_y)
 
 def interpolate_temperature_2d(temperatures, x_coords, y_coords, num_points=10):
-    """
-    Interpolate temperatures over the entire 2D domain using shape functions.
-
-    :param temperatures: Flattened array of temperatures at nodes
-    :param x_coords: 2D array of x-coordinates of nodes
-    :param y_coords: 2D array of y-coordinates of nodes
-    :param num_points: Number of interpolation points between each pair of nodes
-    """
     num_nodes_x = x_coords.shape[1]
     num_nodes_y = y_coords.shape[0]
 
-    # fine grid for interpolation
     fine_x = np.linspace(0, x_coords.max(), (num_nodes_x - 1) * num_points + 1)
     fine_y = np.linspace(0, y_coords.max(), (num_nodes_y - 1) * num_points + 1)
     fine_xx, fine_yy = np.meshgrid(fine_x, fine_y)
-
     fine_temperatures = np.zeros_like(fine_xx)
 
     for i in range(num_nodes_y - 1):
@@ -393,15 +383,12 @@ def interpolate_temperature_2d(temperatures, x_coords, y_coords, num_points=10):
             n3 = n1 + num_nodes_x + 1
             n4 = n1 + num_nodes_x
 
-            # corner coordinates and temperatures
             x1, y1, t1 = x_coords[i, j], y_coords[i, j], temperatures[n1]
             x2, y2, t2 = x_coords[i, j + 1], y_coords[i, j + 1], temperatures[n2]
             x3, y3, t3 = x_coords[i + 1, j + 1], y_coords[i + 1, j + 1], temperatures[n3]
             x4, y4, t4 = x_coords[i + 1, j], y_coords[i + 1, j], temperatures[n4]
 
-            # shape functions
             def shape_functions(x, y):
-                """Return shape function values N1, N2, N3, N4 for a point (x, y)."""
                 denom = (x2 - x1) * (y3 - y1)
                 N1 = ((x2 - x) * (y3 - y)) / denom
                 N2 = ((x - x1) * (y3 - y)) / denom
@@ -414,26 +401,32 @@ def interpolate_temperature_2d(temperatures, x_coords, y_coords, num_points=10):
             xx_fine, yy_fine = np.meshgrid(x_fine, y_fine)
 
             for xi, yi in zip(xx_fine.flatten(), yy_fine.flatten()):
+                if xi > x2: xi = x2
+                if yi > y3: yi = y3
                 N1, N2, N3, N4 = shape_functions(xi, yi)
                 temp = N1 * t1 + N2 * t2 + N3 * t3 + N4 * t4
 
-                ix = np.searchsorted(fine_x, xi) - 1
-                iy = np.searchsorted(fine_y, yi) - 1
+                ix = min(np.searchsorted(fine_x, xi), len(fine_x) - 1)
+                iy = min(np.searchsorted(fine_y, yi), len(fine_y) - 1)
                 fine_temperatures[iy, ix] = temp
+
+   
+    fine_temperatures[:, -1] = np.interp(fine_y, y_coords[:, -1], temperatures[num_nodes_x - 1::num_nodes_x])  # Right edge
+    fine_temperatures[-1, :] = np.interp(fine_x, x_coords[-1, :], temperatures[-num_nodes_x:])  # Top edge
 
     plt.figure(figsize=(10, 8))
     plt.pcolormesh(fine_xx, fine_yy, fine_temperatures, shading='auto', cmap='rainbow')
     plt.colorbar(label='Temperature')
-    plt.xlabel('X-coordinate')
-    plt.ylabel('Y-coordinate')
+    plt.xlabel('x-coordinate')
+    plt.ylabel('y-coordinate')
     plt.title('Temperature Distribution Across the 2D Domain')
     plt.savefig('temperature_distribution_2d.png')
     plt.show()
 
+
 interpolate_temperature_2d(temperatures, x_coords, y_coords, num_points=20)
 
 # X-Y graph showing the solution along a specific line TO DO FIX ME - do we get rid of this or leaving as it is?
-
 
 # def interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='horizontal', position=0.5, num_points=10):
 #     """
