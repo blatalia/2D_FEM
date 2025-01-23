@@ -35,6 +35,11 @@ x - length of the first layer
 k1 - thermal conductivity coefficient for the first material [W/mK]
 k2 - thermal conductivity coefficient for the second material [W/mK]
 
+If you wish to add a point heat source you can do it by changing the following variables.
+node - the node at which you wish to add the point heat source
+heat_value - the temperature of the point source [K]
+If you do not wish to add a point source, you can either set a node out of range or set the node to 'null'.
+
 When plotting the results for temperature along the line, one can determine whether the plot 
 should be of temperatures depending on x ("horizontal) or y ("vertical") by inputing that to the 'xy_plot' variable
 

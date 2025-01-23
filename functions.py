@@ -64,8 +64,10 @@ def get_input_variables_from_file(file_path: str = 'input.json'):
     bc_left = input_variables['bc_left']
     bc_right = input_variables['bc_right']
     xy_plot = input_variables['xy_plot']
+    node = input_variables['node']
+    heat_value = input_variables['heat_value']
 
-    return n, m, len_x, len_y, h_x, h_y, t_left, t_right, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right, xy_plot
+    return n, m, len_x, len_y, h_x, h_y, t_left, t_right, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right, xy_plot, node, heat_value
 
 def get_local_matrix(h_x, h_y, k):
     """
@@ -239,6 +241,7 @@ def neumann_bottom(load_vector, n, m, h_x, q_bottom, num_nodes_x):
         load_vector[node_index] += q_bottom * h_x  # contribution of heat flux over element's length
 
     return load_vector
+ 
 
 def solve_for_temperatures(global_matrix, load_vector):
     """
@@ -339,7 +342,9 @@ def plot_temp_color_map(temperatures, x_coords, y_coords, len_x, len_y):
     plt.show()
 
 
-def apply_bc():
+n, m, len_x, len_y, h_x, h_y, t_left, t_right, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right, xy_plot, node, heat_value = get_input_variables_from_file()
+
+def apply_bc(n, m, len_x, len_y, h_x, h_y, t_left, t_right, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right, node, heat_value):
     """
     Function to first gather the input variables from input.json,
     then apply the boundary conditions, and finally solve for the temperatures.
@@ -356,7 +361,6 @@ def apply_bc():
     num_nodes_y: number of nodes in the y direction
     total_nodes: total number of nodes
     """
-    n, m, len_x, len_y, h_x, h_y, t_left, t_right, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right, xy_plot = get_input_variables_from_file()
 
     num_nodes_x = n + 1
     num_nodes_y = m + 1
@@ -385,11 +389,22 @@ def apply_bc():
     elif bc_right == 'Neumann':
         load_vector = neumann_right(load_vector, n, m, h_y, q_right, num_nodes_y=num_nodes_y, num_nodes_x=num_nodes_x)
 
+    
+    x_coords, y_coords = get_node_coords(n, m, len_x, len_y)
+    
+    count = 1
+    for i,j in zip(x_coords, y_coords):
+        for x,y in zip(i, j):
+            count += 1
+
+    if node <= count and node is not None:
+        load_vector[node] += heat_value
+    elif node > count:
+        print('Node out of range. It will not be taken into account.')
+
     temperatures = solve_for_temperatures(global_matrix, load_vector)
 
-    x_coords, y_coords = get_node_coords(n, m, len_x, len_y)
-
-    return global_matrix, load_vector, temperatures, x_coords, y_coords, len_x, len_y, num_nodes_x, num_nodes_y, total_nodes, xy_plot
+    return global_matrix, load_vector, temperatures, x_coords, y_coords, num_nodes_x, num_nodes_y, total_nodes
 
 
 def interpolate_temperature_2d(temperatures, x_coords, y_coords, num_points=10):
@@ -517,11 +532,10 @@ def interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='h
     plt.show()
 
 
-global_matrix, load_vector, temperatures, x_coords, y_coords, len_x, len_y, num_nodes_x, num_nodes_y, total_nodes, xy_plot = apply_bc()
-
-print(load_vector)
-print(global_matrix)
-print(temperatures)
+global_matrix, load_vector, temperatures, x_coords, y_coords, num_nodes_x, num_nodes_y, total_nodes = apply_bc(n, m, len_x, len_y, h_x, h_y, t_left, t_right, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right, node, heat_value)
+# print(load_vector)
+# print(global_matrix)
+# print(temperatures)
 
 plot_nodes(x_coords, y_coords, len_x, len_y)
 plot_temp_at_node(temperatures, x_coords, y_coords, len_x, len_y)
