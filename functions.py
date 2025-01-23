@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import json
+import csv
 
 
 def get_input_variables_from_file(file_path: str = 'input.json'):
@@ -47,8 +48,8 @@ def get_input_variables_from_file(file_path: str = 'input.json'):
     len_y = input_variables['len_y']
     h_x = input_variables['h_x']
     h_y = input_variables['h_y']
-    t0 = input_variables['t0']
-    tf = input_variables['tf']
+    t_left = input_variables['t_left']
+    t_right = input_variables['t_right']
     t_top = input_variables['t_top']
     t_bottom = input_variables['t_bottom']
     x = input_variables['x']
@@ -62,10 +63,19 @@ def get_input_variables_from_file(file_path: str = 'input.json'):
     bc_bottom = input_variables['bc_bottom']
     bc_left = input_variables['bc_left']
     bc_right = input_variables['bc_right']
+    xy_plot = input_variables['xy_plot']
 
-    return n, m, len_x, len_y, h_x, h_y, t0, tf, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right
+    return n, m, len_x, len_y, h_x, h_y, t_left, t_right, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right, xy_plot
 
 def get_local_matrix(h_x, h_y, k):
+    """
+    Function to get the local matrix for a 4-node quadrilateral element.
+
+    :param h_x: length of the element in the x direction
+    :param h_y: length of the element in the y direction
+    :param k: thermal conductivity of the material
+    :return: local matrix for the element
+    """
     K11 = (k/(3*h_x*h_y))*(h_y**2 + h_x**2)
     K12 = (k/(6*h_x*h_y))*(h_x**2 - 2*h_y**2)
     K13 = -(k/(6*h_x*h_y))*(h_x**2 + h_y**2)
@@ -86,6 +96,20 @@ def get_local_matrix(h_x, h_y, k):
 
 
 def get_global_matrix(n, m, h_x, h_y, x, k1, k2, total_nodes, num_nodes_x):
+    """
+    Function to get the global matrix for the 2D domain.
+
+    :param n: number of elements in the x direction
+    :param m: number of elements in the y direction
+    :param h_x: length of the element in the x direction
+    :param h_y: length of the element in the y direction
+    :param x: where the material changes
+    :param k1: thermal conductivity of the material on the left side of the plate
+    :param k2: thermal conductivity of the material on the right side of the plate
+    :param total_nodes: total number of nodes
+    :param num_nodes_x: number of nodes in the x direction
+    :return: global matrix for the 2D domain
+    """
     if k2 == None:
         k2 = k1
 
@@ -217,13 +241,22 @@ def neumann_bottom(load_vector, n, m, h_x, q_bottom, num_nodes_x):
     return load_vector
 
 def solve_for_temperatures(global_matrix, load_vector):
+    """
+    solve for the temperatures at nodes
+    """
     return np.linalg.solve(global_matrix, load_vector)
 
 def get_node_coords(n, m, len_x, len_y):
+    """
+    get node coordinates
+    """
     x_coords, y_coords = np.meshgrid(np.linspace(0, len_x, n + 1), np.linspace(0, len_y, m + 1))
     return x_coords, y_coords
 
 def plot_nodes(x_coords, y_coords, len_x, len_y):
+    """
+    plot the mesh with nodes enumerated
+    """
     fig = plt.figure()
     ax = fig.add_subplot()
     ax.hlines(y_coords, 0, len_x, color='black', linestyle='-', lw=0.6)
@@ -234,12 +267,7 @@ def plot_nodes(x_coords, y_coords, len_x, len_y):
     for i,j in zip(x_coords, y_coords):
         for x,y in zip(i, j):
             ax.text(x, y, f'{count}', color='black', fontsize=10)
-            # ax.text(x, y, f'({x:.2f}, {y:.2f}), {count}', color='black', fontsize=8)
             count += 1
-
-    # to poniżej prostu nie działa z jakiegos powodu
-    # for count, (x, y) in enumerate(zip(x_coords, y_coords), start=1):
-    #     ax.text(x, y, f'{count}', color='black', fontsize=8)
 
     plt.xlabel('x')
     plt.ylabel('y')
@@ -248,25 +276,39 @@ def plot_nodes(x_coords, y_coords, len_x, len_y):
     plt.show()
 
 def plot_temp_at_node(temperatures, x_coords, y_coords, len_x, len_y):
-    fig = plt.figure(figsize=(20, 15))  # Increase figure size for better readability
+    """
+    plot the temperatures at given nodes and save temperatures with appropriate coordinates to a file
+    """
+    fig = plt.figure(figsize=(20, 15))  
     ax = fig.add_subplot()
     ax.hlines(y_coords, 0, len_x, color='black', linestyle='-', lw=0.6)
     ax.vlines(x_coords, 0, len_y, color='black', linestyle='-', lw=0.6)
     plt.plot(x_coords, y_coords, '.', color='black')
     
-    for i, temp in enumerate(temperatures, start=1):
+    temp_data = [] 
+
+    for i, t in enumerate(temperatures, start=1):  
         x = x_coords.flatten()[i-1]
         y = y_coords.flatten()[i-1]
-        ax.text(x, y, f'{temp:.2f}', color='black', fontsize=12)  # Increase font size
+        ax.text(x, y, f'{t:.2f}', color='black', fontsize=12)  
+        temp_data.append([round(x,4), round(y,4), t])  
+
+    with open('temp_at_coords.csv', 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['x', 'y', 'temperature [K]'])
+        writer.writerows(temp_data)
 
     plt.xlabel('x')
     plt.ylabel('y')
-    plt.title('Temperatures at Nodes')
+    plt.title('Temperatures [K] at Nodes')
     plt.savefig('temp_at_node.png')
     plt.show()
 
 
 def plot_temp_color_mesh(temperatures, x_coords, y_coords, len_x, len_y):
+    """
+    plot the node temperatures and the mesh
+    """
     fig = plt.figure()
     ax = fig.add_subplot()
     ax.hlines(y_coords, 0, len_x, color='black', linestyle='-', lw=0.3)
@@ -277,11 +319,14 @@ def plot_temp_color_mesh(temperatures, x_coords, y_coords, len_x, len_y):
     plt.colorbar()
     plt.xlabel('x')
     plt.ylabel('y')
-    plt.title('temperatures at nodes')
+    plt.title('Temperatures [K] at Nodes')
     plt.savefig('temp_color_mesh.png')
     plt.show()
 
 def plot_temp_color_map(temperatures, x_coords, y_coords, len_x, len_y):
+    """
+    plot the node temperatures without the mesh
+    """
     fig = plt.figure()
     ax = fig.add_subplot()
     
@@ -289,7 +334,7 @@ def plot_temp_color_map(temperatures, x_coords, y_coords, len_x, len_y):
     plt.colorbar()
     plt.xlabel('x')
     plt.ylabel('y')
-    plt.title('temperatures at nodes')
+    plt.title('Temperatures [K] at Nodes')
     plt.savefig('temp_color_map.png')
     plt.show()
 
@@ -311,7 +356,7 @@ def apply_bc():
     num_nodes_y: number of nodes in the y direction
     total_nodes: total number of nodes
     """
-    n, m, len_x, len_y, h_x, h_y, t0, tf, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right = get_input_variables_from_file()
+    n, m, len_x, len_y, h_x, h_y, t_left, t_right, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right, xy_plot = get_input_variables_from_file()
 
     num_nodes_x = n + 1
     num_nodes_y = m + 1
@@ -331,12 +376,12 @@ def apply_bc():
         load_vector = neumann_bottom(load_vector, n, m, h_x, q_bottom, num_nodes_x)
 
     if bc_left == 'Dirichlet':
-        global_matrix, load_vector = dirichlet_left(global_matrix, load_vector, n, m, t0, num_nodes_y)
+        global_matrix, load_vector = dirichlet_left(global_matrix, load_vector, n, m, t_left, num_nodes_y)
     elif bc_left == 'Neumann':
         load_vector = neumann_left(load_vector, n, m, h_y, q_left, num_nodes_y, num_nodes_x)
 
     if bc_right == 'Dirichlet':
-        global_matrix, load_vector = dirichlet_right(global_matrix, load_vector, n, m, tf, num_nodes_y)
+        global_matrix, load_vector = dirichlet_right(global_matrix, load_vector, n, m, t_right, num_nodes_y)
     elif bc_right == 'Neumann':
         load_vector = neumann_right(load_vector, n, m, h_y, q_right, num_nodes_y=num_nodes_y, num_nodes_x=num_nodes_x)
 
@@ -344,30 +389,18 @@ def apply_bc():
 
     x_coords, y_coords = get_node_coords(n, m, len_x, len_y)
 
-    return global_matrix, load_vector, temperatures, x_coords, y_coords, len_x, len_y, num_nodes_x, num_nodes_y, total_nodes
+    return global_matrix, load_vector, temperatures, x_coords, y_coords, len_x, len_y, num_nodes_x, num_nodes_y, total_nodes, xy_plot
 
-
-global_matrix, load_vector, temperatures, x_coords, y_coords, len_x, len_y, num_nodes_x, num_nodes_y, total_nodes = apply_bc()
-
-print(load_vector)
-print(global_matrix)
-
-# save the modified global matrix and load vector
-np.savetxt('global_matrix.txt', global_matrix)
-np.savetxt('load_vector.txt', load_vector)
-
-print(temperatures)
-
-# save the temperatures
-np.savetxt('temperatures.txt', temperatures)
-
-plot_nodes(x_coords, y_coords, len_x, len_y)
-
-plot_temp_at_node(temperatures, x_coords, y_coords, len_x, len_y)
-plot_temp_color_mesh(temperatures, x_coords, y_coords, len_x, len_y)
-plot_temp_color_map(temperatures, x_coords, y_coords, len_x, len_y)
 
 def interpolate_temperature_2d(temperatures, x_coords, y_coords, num_points=10):
+    """
+    Function to interpolate temperatures in 2D domain.
+
+    :param temperatures: Flattened array of temperatures at nodes
+    :param x_coords: 2D array of x-coordinates of nodes
+    :param y_coords: 2D array of y-coordinates of nodes
+    :param num_points: Number of interpolation points between each node
+    """
     num_nodes_x = x_coords.shape[1]
     num_nodes_y = y_coords.shape[0]
 
@@ -419,74 +452,80 @@ def interpolate_temperature_2d(temperatures, x_coords, y_coords, num_points=10):
     plt.colorbar(label='Temperature')
     plt.xlabel('x-coordinate')
     plt.ylabel('y-coordinate')
-    plt.title('Temperature Distribution Across the 2D Domain')
+    plt.title('Temperature [K] Distribution Across the 2D Domain')
     plt.savefig('temperature_distribution_2d.png')
     plt.show()
 
 
+def interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='horizontal', position=0.5, num_points=10):
+    """
+    Interpolate temperatures along a specific line using shape functions, with more points for smoother interpolation.
+
+    :param temperatures: Flattened array of temperatures at nodes
+    :param x_coords: 2D array of x-coordinates of nodes
+    :param y_coords: 2D array of y-coordinates of nodes
+    :param line: 'horizontal' or 'vertical' line
+    :param position: Relative position of the line (0 to 1), e.g., 0.5 for centerline
+    :param num_points: Number of interpolation points between each node
+    """
+    num_nodes_x = x_coords.shape[1]
+    num_nodes_y = y_coords.shape[0]
+
+    if line == 'horizontal':
+        y_pos = position * y_coords.max()
+        row_index = int(position * (num_nodes_y - 1))
+        x_line = x_coords[row_index, :]
+        temps_line = temperatures[row_index * num_nodes_x:(row_index + 1) * num_nodes_x]
+    elif line == 'vertical':
+        x_pos = position * x_coords.max()
+        col_index = int(position * (num_nodes_x - 1))
+        y_line = y_coords[:, col_index]
+        temps_line = temperatures[col_index::num_nodes_x]
+
+    interpolated_x = []
+    interpolated_temps = []
+
+    for i in range(len(temps_line) - 1):
+        x_start = x_line[i] if line == 'horizontal' else y_line[i]
+        x_end = x_line[i + 1] if line == 'horizontal' else y_line[i + 1]
+        temp_start = temps_line[i]
+        temp_end = temps_line[i + 1]
+
+        for j in range(num_points + 1):
+            xi = j / num_points
+            N1 = 1 - xi  # Shape function for the first node
+            N2 = xi      # Shape function for the second node
+            interpolated_temp = N1 * temp_start + N2 * temp_end
+            interpolated_pos = N1 * x_start + N2 * x_end
+
+            interpolated_x.append(interpolated_pos)
+            interpolated_temps.append(interpolated_temp)
+
+    plt.figure(figsize=(10, 6))
+    if line == 'horizontal':
+        plt.plot(interpolated_x, interpolated_temps, '-o', label=f'Temperature along y={y_pos:.2f}')
+        plt.xlabel('X-coordinate')
+    elif line == 'vertical':
+        plt.plot(interpolated_x, interpolated_temps, '-o', label=f'Temperature along x={x_pos:.2f}')
+        plt.xlabel('Y-coordinate')
+
+    plt.ylabel('Temperature')
+    plt.title('Temperature [K] Distribution Along Line')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig('temp_along_line.png')
+    plt.show()
+
+
+global_matrix, load_vector, temperatures, x_coords, y_coords, len_x, len_y, num_nodes_x, num_nodes_y, total_nodes, xy_plot = apply_bc()
+
+print(load_vector)
+print(global_matrix)
+print(temperatures)
+
+plot_nodes(x_coords, y_coords, len_x, len_y)
+plot_temp_at_node(temperatures, x_coords, y_coords, len_x, len_y)
+plot_temp_color_mesh(temperatures, x_coords, y_coords, len_x, len_y)
+plot_temp_color_map(temperatures, x_coords, y_coords, len_x, len_y)
 interpolate_temperature_2d(temperatures, x_coords, y_coords, num_points=20)
-
-# X-Y graph showing the solution along a specific line TO DO FIX ME - do we get rid of this or leaving as it is?
-
-# def interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='horizontal', position=0.5, num_points=10):
-#     """
-#     Interpolate temperatures along a specific line using shape functions, with more points for smoother interpolation.
-
-#     :param temperatures: Flattened array of temperatures at nodes
-#     :param x_coords: 2D array of x-coordinates of nodes
-#     :param y_coords: 2D array of y-coordinates of nodes
-#     :param line: 'horizontal' or 'vertical' line
-#     :param position: Relative position of the line (0 to 1), e.g., 0.5 for centerline
-#     :param num_points: Number of interpolation points between each node
-#     """
-#     num_nodes_x = x_coords.shape[1]
-#     num_nodes_y = y_coords.shape[0]
-
-#     if line == 'horizontal':
-#         y_pos = position * y_coords.max()
-#         row_index = int(position * (num_nodes_y - 1))
-#         x_line = x_coords[row_index, :]
-#         temps_line = temperatures[row_index * num_nodes_x:(row_index + 1) * num_nodes_x]
-#     elif line == 'vertical':
-#         x_pos = position * x_coords.max()
-#         col_index = int(position * (num_nodes_x - 1))
-#         y_line = y_coords[:, col_index]
-#         temps_line = temperatures[col_index::num_nodes_x]
-
-#     interpolated_x = []
-#     interpolated_temps = []
-
-#     for i in range(len(temps_line) - 1):
-#         x_start = x_line[i] if line == 'horizontal' else y_line[i]
-#         x_end = x_line[i + 1] if line == 'horizontal' else y_line[i + 1]
-#         temp_start = temps_line[i]
-#         temp_end = temps_line[i + 1]
-
-#         for j in range(num_points + 1):
-#             xi = j / num_points
-#             N1 = 1 - xi  # Shape function for the first node
-#             N2 = xi      # Shape function for the second node
-#             interpolated_temp = N1 * temp_start + N2 * temp_end
-#             interpolated_pos = N1 * x_start + N2 * x_end
-
-#             interpolated_x.append(interpolated_pos)
-#             interpolated_temps.append(interpolated_temp)
-
-#     plt.figure(figsize=(10, 6))
-#     if line == 'horizontal':
-#         plt.plot(interpolated_x, interpolated_temps, '-o', label=f'Temperature along y={y_pos:.2f}')
-#         plt.xlabel('X-coordinate')
-#     elif line == 'vertical':
-#         plt.plot(interpolated_x, interpolated_temps, '-o', label=f'Temperature along x={x_pos:.2f}')
-#         plt.xlabel('Y-coordinate')
-
-#     plt.ylabel('Temperature')
-#     plt.title('Temperature Distribution Along Line')
-#     plt.legend()
-#     plt.grid(True)
-#     plt.savefig('temp_along_line.png')
-#     plt.show()
-
-# #interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='vertical', position=0.5)
-# interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='horizontal', position=0.5, num_points=20)
-
+interpolate_temperature_along_line(temperatures, x_coords, y_coords, line=xy_plot, position=0.5, num_points=20)

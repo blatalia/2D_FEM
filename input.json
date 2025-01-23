@@ -3,8 +3,8 @@
      "m": 10,
      "len_x": 1.0,
      "len_y": 1.0,
-     "t0": 300,
-     "tf": 400,
+     "t_left": 300,
+     "t_right": 400,
      "t_top": 100,
      "t_bottom": 200.0,
      "x": 0.4,
@@ -16,6 +16,7 @@
      "q_top": 0,
      "bc_top":  "Dirichlet",
      "bc_bottom": "Neumann",
-     "bc_left": "Neumann",
-     "bc_right": "Dirichlet"
+     "bc_left": "Dirichlet",
+     "bc_right": "Neumann",
+     "xy_plot": "horizontal"
 }
