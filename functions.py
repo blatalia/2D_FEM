@@ -397,10 +397,11 @@ def apply_bc(n, m, len_x, len_y, h_x, h_y, t_left, t_right, t_top, t_bottom, x, 
         for x,y in zip(i, j):
             count += 1
 
-    if node <= count and node is not None:
-        load_vector[node] += heat_value
-    elif node > count:
-        print('Node out of range. It will not be taken into account.')
+    if node is not None:
+        if node <= count:
+            load_vector[node-1] += heat_value
+        elif node > count:
+            print('Node out of range. It will not be taken into account.')
 
     temperatures = solve_for_temperatures(global_matrix, load_vector)
 
