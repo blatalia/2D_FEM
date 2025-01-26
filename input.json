@@ -19,6 +19,6 @@
      "bc_left": "Dirichlet",
      "bc_right": "Dirichlet",
      "xy_plot": "horizontal",
-     "node": null,
-     "heat_value": 0
+     "point": [0.5, 0.5],
+     "heat_value": 50
 }
