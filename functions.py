@@ -64,10 +64,10 @@ def get_input_variables_from_file(file_path: str = 'input.json'):
     bc_left = input_variables['bc_left']
     bc_right = input_variables['bc_right']
     xy_plot = input_variables['xy_plot']
-    node = input_variables['node']
+    point = input_variables['point']
     heat_value = input_variables['heat_value']
 
-    return n, m, len_x, len_y, h_x, h_y, t_left, t_right, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right, xy_plot, node, heat_value
+    return n, m, len_x, len_y, h_x, h_y, t_left, t_right, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right, xy_plot, point, heat_value
 
 def get_local_matrix(h_x, h_y, k):
     """
@@ -342,9 +342,9 @@ def plot_temp_color_map(temperatures, x_coords, y_coords, len_x, len_y):
     plt.show()
 
 
-n, m, len_x, len_y, h_x, h_y, t_left, t_right, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right, xy_plot, node, heat_value = get_input_variables_from_file()
+n, m, len_x, len_y, h_x, h_y, t_left, t_right, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right, xy_plot, point, heat_value = get_input_variables_from_file()
 
-def apply_bc(n, m, len_x, len_y, h_x, h_y, t_left, t_right, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right, node, heat_value):
+def bc_and_heat_source(n, m, len_x, len_y, h_x, h_y, t_left, t_right, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right, point, heat_value):
     """
     Function to first gather the input variables from input.json,
     then apply the boundary conditions, and finally solve for the temperatures.
@@ -389,19 +389,19 @@ def apply_bc(n, m, len_x, len_y, h_x, h_y, t_left, t_right, t_top, t_bottom, x, 
     elif bc_right == 'Neumann':
         load_vector = neumann_right(load_vector, n, m, h_y, q_right, num_nodes_y=num_nodes_y, num_nodes_x=num_nodes_x)
 
-    
     x_coords, y_coords = get_node_coords(n, m, len_x, len_y)
     
-    count = 1
-    for i,j in zip(x_coords, y_coords):
-        for x,y in zip(i, j):
-            count += 1
+    node_positions = np.array([(x, y) for x_row, y_row in zip(x_coords, y_coords) for x, y in zip(x_row, y_row)])
+    node_count = len(node_positions)
 
-    if node is not None:
-        if node <= count:
-            load_vector[node-1] += heat_value
-        elif node > count:
-            print('Node out of range. It will not be taken into account.')
+    if point is not None:
+        if 0 <= point[0] <= len_x and 0 <= point[1] <= len_y:
+            distances = np.linalg.norm(node_positions - np.array(point), axis=1)
+            nearest_node = np.argmin(distances) + 1
+
+            load_vector[nearest_node - 1] += heat_value
+        else:
+            print('Point is out of material range. It will not be taken into account.')
 
     temperatures = solve_for_temperatures(global_matrix, load_vector)
 
@@ -509,8 +509,8 @@ def interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='h
 
         for j in range(num_points + 1):
             xi = j / num_points
-            N1 = 1 - xi  # Shape function for the first node
-            N2 = xi      # Shape function for the second node
+            N1 = 1 - xi  
+            N2 = xi      
             interpolated_temp = N1 * temp_start + N2 * temp_end
             interpolated_pos = N1 * x_start + N2 * x_end
 
@@ -533,7 +533,7 @@ def interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='h
     plt.show()
 
 
-global_matrix, load_vector, temperatures, x_coords, y_coords, num_nodes_x, num_nodes_y, total_nodes = apply_bc(n, m, len_x, len_y, h_x, h_y, t_left, t_right, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right, node, heat_value)
+global_matrix, load_vector, temperatures, x_coords, y_coords, num_nodes_x, num_nodes_y, total_nodes = bc_and_heat_source(n, m, len_x, len_y, h_x, h_y, t_left, t_right, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right, point, heat_value)
 # print(load_vector)
 # print(global_matrix)
 # print(temperatures)

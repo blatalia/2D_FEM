@@ -36,8 +36,9 @@ k1 - thermal conductivity coefficient for the first material [W/mK]
 k2 - thermal conductivity coefficient for the second material [W/mK]
 
 If you wish to add a point heat source you can do it by changing the following variables.
-node - the node at which you wish to add the point heat source
-heat_value - the temperature of the point source [K]
+point - the point at which you wish to add the point heat source, first value is the x-coordinate and the second is the y-coordinate
+(Be aware that the program will approximate the chosen point to the nearest possible node in the mesh)
+heat_value - the power of the point heat source [W]
 If you do not wish to add a point source, you can either set a node out of range or set the node to 'null'.
 
 When plotting the results for temperature along the line, one can determine whether the plot 
