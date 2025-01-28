@@ -39,7 +39,7 @@ If you wish to add a point heat source you can do it by changing the following v
 point - the point at which you wish to add the point heat source, first value is the x-coordinate and the second is the y-coordinate
 (Be aware that the program will approximate the chosen point to the nearest possible node in the mesh)
 heat_value - the power of the point heat source [W]
-If you do not wish to add a point source, you can either set a node out of range or set the node to 'null'.
+If you do not wish to add a point source, you can set a point to 'null' (instead of setting the coordinates).
 
 When plotting the results for temperature along the line, one can determine whether the plot 
 should be of temperatures depending on x ("horizontal) or y ("vertical") by inputing that to the 'xy_plot' variable
