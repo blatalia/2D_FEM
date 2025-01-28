@@ -293,17 +293,17 @@ def plot_temp_at_node(temperatures, x_coords, y_coords, len_x, len_y):
     for i, t in enumerate(temperatures, start=1):  
         x = x_coords.flatten()[i-1]
         y = y_coords.flatten()[i-1]
-        ax.text(x, y, f'{t:.2f}', color='black', fontsize=12)  
-        temp_data.append([round(x,4), round(y,4), t])  
+        ax.text(x, y, f'{t:.2f} K', color='black', fontsize=12)
+        temp_data.append([round(x, 4), round(y, 4), t])  
 
     with open('temp_at_coords.csv', 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(['x', 'y', 'temperature [K]'])
         writer.writerows(temp_data)
 
-    plt.xlabel('x')
-    plt.ylabel('y')
-    plt.title('Temperatures [K] at Nodes')
+    plt.xlabel('x [m]')
+    plt.ylabel('y [m]')
+    # plt.title('Temperatures [K] at Nodes')
     plt.savefig('temp_at_node.png')
     plt.show()
 
@@ -319,10 +319,10 @@ def plot_temp_color_mesh(temperatures, x_coords, y_coords, len_x, len_y):
     plt.plot(x_coords, y_coords, '.', color='black')
     
     plt.pcolormesh(x_coords, y_coords, temperatures.reshape(x_coords.shape))
-    plt.colorbar()
-    plt.xlabel('x')
-    plt.ylabel('y')
-    plt.title('Temperatures [K] at Nodes')
+    plt.colorbar(label='Temperature [K]')
+    plt.xlabel('x [m]')
+    plt.ylabel('y [m]')
+    # plt.title('Temperatures [K] at Nodes')
     plt.savefig('temp_color_mesh.png')
     plt.show()
 
@@ -334,12 +334,13 @@ def plot_temp_color_map(temperatures, x_coords, y_coords, len_x, len_y):
     ax = fig.add_subplot()
     
     plt.pcolormesh(x_coords, y_coords, temperatures.reshape(x_coords.shape))
-    plt.colorbar()
-    plt.xlabel('x')
-    plt.ylabel('y')
-    plt.title('Temperatures [K] at Nodes')
+    plt.colorbar(label='Temperature [K]')
+    plt.xlabel('x [m]')
+    plt.ylabel('y [m]')
+    # plt.title('Temperatures [K] at Nodes')
     plt.savefig('temp_color_map.png')
     plt.show()
+
 
 
 n, m, len_x, len_y, h_x, h_y, t_left, t_right, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right, xy_plot, point, heat_value = get_input_variables_from_file()
@@ -459,18 +460,17 @@ def interpolate_temperature_2d(temperatures, x_coords, y_coords, num_points=10):
                 iy = min(np.searchsorted(fine_y, yi), len(fine_y) - 1)
                 fine_temperatures[iy, ix] = temp
 
-   
     fine_temperatures[:, -1] = np.interp(fine_y, y_coords[:, -1], temperatures[num_nodes_x - 1::num_nodes_x])  # Right edge
     fine_temperatures[-1, :] = np.interp(fine_x, x_coords[-1, :], temperatures[-num_nodes_x:])  # Top edge
 
     plt.figure(figsize=(10, 8))
     plt.pcolormesh(fine_xx, fine_yy, fine_temperatures, shading='auto', cmap='rainbow')
-    plt.colorbar(label='Temperature')
-    plt.xlabel('x-coordinate')
-    plt.ylabel('y-coordinate')
-    plt.title('Temperature [K] Distribution Across the 2D Domain')
+    plt.colorbar(label='Temperature [K]')
+    plt.xlabel('x [m]')
+    plt.ylabel('y [m]')
     plt.savefig('temperature_distribution_2d.png')
     plt.show()
+
 
 
 def interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='horizontal', position=0.5, num_points=10):
@@ -518,19 +518,20 @@ def interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='h
             interpolated_temps.append(interpolated_temp)
 
     plt.figure(figsize=(10, 6))
-    if line == 'horizontal':
-        plt.plot(interpolated_x, interpolated_temps, '-o', label=f'Temperature along y={y_pos:.2f}')
-        plt.xlabel('X-coordinate')
-    elif line == 'vertical':
-        plt.plot(interpolated_x, interpolated_temps, '-o', label=f'Temperature along x={x_pos:.2f}')
-        plt.xlabel('Y-coordinate')
 
-    plt.ylabel('Temperature')
-    plt.title('Temperature [K] Distribution Along Line')
+    if line == 'horizontal':
+        plt.plot(interpolated_x, interpolated_temps, '-o', label=f'Temperature along y={y_pos:.2f} m')
+        plt.xlabel('x [m]')
+    elif line == 'vertical':
+        plt.plot(interpolated_x, interpolated_temps, '-o', label=f'Temperature along x={x_pos:.2f} m')
+        plt.xlabel('y [m]')
+
+    plt.ylabel('Temperature [K]')
     plt.legend()
     plt.grid(True)
     plt.savefig('temp_along_line.png')
     plt.show()
+
 
 
 global_matrix, load_vector, temperatures, x_coords, y_coords, num_nodes_x, num_nodes_y, total_nodes = bc_and_heat_source(n, m, len_x, len_y, h_x, h_y, t_left, t_right, t_top, t_bottom, x, k1, k2, q_right, q_left, q_bottom, q_top, bc_top, bc_bottom, bc_left, bc_right, point, heat_value)

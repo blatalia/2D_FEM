@@ -1,6 +1,6 @@
 {
-     "n": 10,
-     "m": 10,
+     "n": 7,
+     "m": 7,
      "len_x": 1.0,
      "len_y": 1.0,
      "t_left": 300,
@@ -8,17 +8,17 @@
      "t_top": 100,
      "t_bottom": 300.0,
      "x": 0.4,
-     "k1": 0.1,
-     "k2": 0.1, 
+     "k1": 1.4,
+     "k2": 0.4, 
      "q_left": 100,
      "q_right": 100,
      "q_bottom": 0,
      "q_top": 0,
-     "bc_top":  "Neumann",
-     "bc_bottom": "Neumann",
+     "bc_top":  "Dirichlet",
+     "bc_bottom": "Dirichlet",
      "bc_left": "Dirichlet",
      "bc_right": "Dirichlet",
      "xy_plot": "horizontal",
      "point": [0.5, 0.5],
-     "heat_value": 50
+     "heat_value": 0
 }
