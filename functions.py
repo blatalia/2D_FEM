@@ -303,7 +303,7 @@ def plot_temp_at_node(temperatures, x_coords, y_coords, len_x, len_y):
 
     plt.xlabel('x [m]')
     plt.ylabel('y [m]')
-    # plt.title('Temperatures [K] at Nodes')
+    plt.title('Temperatures [K] at Nodes')
     plt.savefig('temp_at_node.png')
     plt.show()
 
@@ -322,7 +322,7 @@ def plot_temp_color_mesh(temperatures, x_coords, y_coords, len_x, len_y):
     plt.colorbar(label='Temperature [K]')
     plt.xlabel('x [m]')
     plt.ylabel('y [m]')
-    # plt.title('Temperatures [K] at Nodes')
+    plt.title('Temperatures [K] at Nodes')
     plt.savefig('temp_color_mesh.png')
     plt.show()
 
@@ -337,7 +337,7 @@ def plot_temp_color_map(temperatures, x_coords, y_coords, len_x, len_y):
     plt.colorbar(label='Temperature [K]')
     plt.xlabel('x [m]')
     plt.ylabel('y [m]')
-    # plt.title('Temperatures [K] at Nodes')
+    plt.title('Temperatures [K] at Nodes')
     plt.savefig('temp_color_map.png')
     plt.show()
 
@@ -468,6 +468,7 @@ def interpolate_temperature_2d(temperatures, x_coords, y_coords, num_points=10):
     plt.colorbar(label='Temperature [K]')
     plt.xlabel('x [m]')
     plt.ylabel('y [m]')
+    plt.title('Temperature [K] Distribution Across 2D Domain')
     plt.savefig('temperature_distribution_2d.png')
     plt.show()
 
@@ -529,6 +530,7 @@ def interpolate_temperature_along_line(temperatures, x_coords, y_coords, line='h
     plt.ylabel('Temperature [K]')
     plt.legend()
     plt.grid(True)
+    plt.title('Temperature [K] Distribution Along Line')
     plt.savefig('temp_along_line.png')
     plt.show()
 
