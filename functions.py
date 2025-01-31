@@ -152,6 +152,7 @@ def dirichlet_left(global_matrix, load_vector, num_nodes_x, num_nodes_y, t_left)
         global_matrix[node_index, :] = 0
         global_matrix[node_index, node_index] = 1
         load_vector[node_index] = t_left
+
     return global_matrix, load_vector
 
 
@@ -165,6 +166,7 @@ def dirichlet_right(global_matrix, load_vector, n, num_nodes_x, num_nodes_y, t_r
         global_matrix[node_index, :] = 0
         global_matrix[node_index, node_index] = 1
         load_vector[node_index] = t_right
+
     return global_matrix, load_vector
 
 
@@ -178,6 +180,7 @@ def dirichlet_bottom(global_matrix, load_vector, num_nodes_x, t_bottom):
         global_matrix[node_index, :] = 0
         global_matrix[node_index, node_index] = 1
         load_vector[node_index] = t_bottom
+
     return global_matrix, load_vector
 
 
@@ -191,6 +194,7 @@ def dirichlet_top(global_matrix, load_vector, m, num_nodes_x, t_top):
         global_matrix[node_index, :] = 0
         global_matrix[node_index, node_index] = 1
         load_vector[node_index] = t_top
+
     return global_matrix, load_vector
 
 
@@ -202,6 +206,7 @@ def neumann_left(load_vector, num_nodes_x, num_nodes_y, h_y, q_left):
     for j in range(num_nodes_y):
         node_index = j * num_nodes_x
         load_vector[node_index] += q_left * h_y
+
     return load_vector
 
 
@@ -213,6 +218,7 @@ def neumann_right(load_vector, n, num_nodes_x, num_nodes_y, h_y, q_right):
     for j in range(num_nodes_y):
         node_index = j * num_nodes_x + n
         load_vector[node_index] += q_right * h_y
+
     return load_vector
 
 
@@ -224,6 +230,7 @@ def neumann_top(load_vector, m, num_nodes_x, h_x, q_top):
     for i in range(num_nodes_x):
         node_index = (m * num_nodes_x) + i
         load_vector[node_index] += q_top * h_x
+
     return load_vector
 
 
@@ -235,10 +242,14 @@ def neumann_bottom(load_vector, num_nodes_x, h_x, q_bottom):
     for i in range(num_nodes_x):
         node_index = i
         load_vector[node_index] += q_bottom * h_x
+
     return load_vector
 
 
 def solve_for_temperatures(global_matrix, load_vector):
+    """
+    solve for the temperatures at nodes
+    """
     return np.linalg.solve(global_matrix, load_vector)
 
 def get_node_coords(n, m, len_x, len_y):
